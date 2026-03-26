@@ -1,0 +1,16 @@
+node_modules/
+coverage/
+build/
+dist/
+.env
+
+# Terraform
+**/.terraform/
+*.tfstate
+*.tfstate.backup
+.terraform.lock.hcl
+tfplan
+
+# OS
+.DS_Store
+Thumbs.db

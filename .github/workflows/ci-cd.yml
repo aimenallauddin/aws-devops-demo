@@ -1,0 +1,117 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  AWS_REGION: us-east-1
+  ECR_REPOSITORY: aws-devops-demo
+  EKS_CLUSTER_NAME: aws-devops-demo-cluster
+
+jobs:
+  # ─────────────────────────────────────
+  # 1. Test
+  # ─────────────────────────────────────
+  test:
+    name: Test & Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit tests
+        run: npm test -- --coverage --watchAll=false
+
+  # ─────────────────────────────────────
+  # 2. Build & push image to ECR
+  # ─────────────────────────────────────
+  build:
+    name: Build & Push to ECR
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.event_name == 'push'
+    outputs:
+      image-tag: ${{ steps.vars.outputs.short-sha }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set short SHA
+        id: vars
+        run: echo "short-sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build, tag, and push image
+        env:
+          REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ steps.vars.outputs.short-sha }}
+        run: |
+          docker build -t $REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          docker push $REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          # Also tag as latest
+          docker tag $REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG \
+                     $REGISTRY/$ECR_REPOSITORY:latest
+          docker push $REGISTRY/$ECR_REPOSITORY:latest
+
+  # ─────────────────────────────────────
+  # 3. Deploy to EKS
+  # ─────────────────────────────────────
+  deploy:
+    name: Deploy to EKS
+    runs-on: ubuntu-latest
+    needs: build
+    environment:
+      name: production
+      url: https://demo.myapp.com
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Update kubeconfig
+        run: |
+          aws eks update-kubeconfig \
+            --region ${{ env.AWS_REGION }} \
+            --name ${{ env.EKS_CLUSTER_NAME }}
+
+      - name: Deploy to EKS
+        env:
+          IMAGE_TAG: ${{ needs.build.outputs.image-tag }}
+        run: |
+          kubectl apply -f k8s/
+          kubectl set image deployment/aws-devops-demo \
+            app=${{ secrets.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:$IMAGE_TAG
+          kubectl rollout status deployment/aws-devops-demo --timeout=120s
+
+      - name: Verify deployment
+        run: kubectl get pods -l app=aws-devops-demo
