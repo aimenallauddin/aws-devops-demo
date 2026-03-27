@@ -4,8 +4,8 @@
   "description": "A end-to-end DevOps project demonstrating a production-style CI/CD pipeline for a Node.js application deployed to AWS EKS (Kubernetes), with infrastructure provisioned via Terraform.",
   "main": "index.js",
   "scripts": {
-  "build": "echo 'No build step needed for this demo'",
-  "start": "node server.js"
+    "build": "echo 'No build step needed for this demo'",
+    "start": "node server.js"
   },
   "repository": {
     "type": "git",
@@ -18,5 +18,8 @@
   "bugs": {
     "url": "https://github.com/aimenallauddin/aws-devops-demo/issues"
   },
-  "homepage": "https://github.com/aimenallauddin/aws-devops-demo#readme"
+  "homepage": "https://github.com/aimenallauddin/aws-devops-demo#readme",
+  "dependencies": {
+    "express": "^5.2.1"
+  }
 }
