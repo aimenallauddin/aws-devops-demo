@@ -16,3 +16,13 @@ variable "vpc_cidr" {
   type        = string
   default     = "10.0.0.0/16"   # Gives us 65,536 IP addresses
 }
+variable "github_repository" {
+  description = "The GitHub repository in 'username/repo-name' format"
+  type        = string
+  default     = "aimenallauddin/aws-devops-demo" 
+}
+
+variable "github_connection_arn" {
+  description = "The ARN of the AWS CodeStar Connection to GitHub"
+  type        = string
+}

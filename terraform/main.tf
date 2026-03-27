@@ -52,3 +52,7 @@ output "eks_cluster_endpoint" {
   description = "Kubernetes API server endpoint"
   value       = aws_eks_cluster.main.endpoint
 }
+output "codepipeline_name" {
+  description = "The name of the pipeline created"
+  value       = aws_codepipeline.main.name
+}
