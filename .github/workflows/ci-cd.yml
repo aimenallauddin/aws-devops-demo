@@ -29,10 +29,7 @@ jobs:
       # 1. Checking out the repository code onto the runner
       - name: Checkout code
         uses: actions/checkout@v4
-        - name: List files in repository
-        run: |
-          echo "Current directory: $(pwd)"
-          ls -R
+        
 
       # 2. Creating a short Git SHA to use as the image tag.
       - name: Set image tag from Git SHA
