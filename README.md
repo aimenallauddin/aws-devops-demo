@@ -1,146 +1,95 @@
-# AWS DevOps Demo — Node.js · EKS · Terraform · GitHub Actions
 
-A end-to-end DevOps project demonstrating a production-style CI/CD pipeline for a Node.js application deployed to AWS EKS (Kubernetes), with infrastructure provisioned via Terraform.
+# 🚀 AWS Enterprise DevOps: Automated EKS Pipeline
+**Infrastructure-as-Code (Terraform) • AWS CodePipeline • Kubernetes (EKS) • Node.js**
 
----
-
-## Tech Stack
-
-| Layer | Tool |
-|---|---|
-| Cloud | AWS (EKS, ECR, VPC, IAM) |
-| Infrastructure as Code | Terraform |
-| Containerisation | Docker (multi-stage build) |
-| Container Orchestration | Kubernetes (EKS) |
-| CI/CD | GitHub Actions |
-| Language | Node.js 20 |
+An enterprise-grade DevOps ecosystem demonstrating a fully automated, AWS-native CI/CD lifecycle. This project replaces third-party CI tools with **AWS CodePipeline** and **CodeBuild**, ensuring a secure, internalized build process within the AWS backbone.
 
 ---
 
-## Pipeline Overview
+## 🏗️ Technical Architecture
 
-Every push to `main` triggers a three-stage automated pipeline:
-
-```
-Push to main
-     │
-     ▼
-┌─────────────┐
-│  1. BUILD   │  Docker multi-stage build → push to AWS ECR
-└──────┬──────┘     (tagged with Git short SHA for traceability)
-       │
-       ▼
-┌─────────────┐
-│  2. DEPLOY  │  (Commented this stage since i don't have EKS cluster) kubectl rolling update on EKS
-└─────────────┘     zero-downtime · auto-rollback on failure 
-```
-
-Pull requests run the **test stage only** — nothing is deployed until code merges to `main`.
+| Layer | Technology | Engineering Choice |
+| :--- | :--- | :--- |
+| **Cloud** | AWS (EKS, ECR, VPC, IAM) | Multi-AZ High Availability |
+| **IaC** | Terraform (v1.7+) | Modular, S3 Remote State + DynamoDB Locking |
+| **CI/CD** | AWS CodePipeline | Native AWS integration; reduced secret exposure |
+| **Build** | AWS CodeBuild | Serverless Docker builds via `buildspec.yml` |
+| **Orchestration** | Kubernetes (EKS v1.29) | Managed Control Plane with Private Worker Nodes |
+| **Container** | Docker (Alpine) | Multi-stage build, non-root user, minimal footprint |
 
 ---
 
-## Infrastructure
+## 🛤️ CI/CD Strategy: The "Source-to-Registry" Flow
 
-Provisioned with Terraform. Running `terraform apply` creates:
+This project utilizes a **Push-to-Deploy** model. Every merge to the `main` branch triggers the native AWS Pipeline:
 
-- **VPC** — isolated network with public and private subnets across 2 availability zones
-- **NAT Gateway** — allows private subnet resources to reach the internet
-- **EKS Cluster** — managed Kubernetes control plane (v1.29)
-- **Node Group** — 2× `t3.medium` EC2 worker nodes (auto-scales to 4)
-- **ECR Repository** — private Docker image registry with scan-on-push enabled
+1.  **Source:** AWS CodeStar Connection monitors GitHub for changes.
+2.  **Build:** CodeBuild pulls the source, builds the Docker image, and tags it with a **Git Short SHA** for immutable traceability.
+3.  **Security Scan:** Automated **ECR Scan on Push** checks for CVEs before the image is finalized.
+4.  **Artifact Store:** Build logs and deployment metadata are encrypted and stored in an S3 Artifact bucket.
+
+---
+
+## 🛠️ Infrastructure Design
+
+Provisioned via modular Terraform. Running `terraform apply` orchestrates:
+
+* **Networking (`vpc.tf`):** Custom VPC with Public/Private subnet topology. EKS Nodes live in **Private Subnets** for security, reaching the internet via a **NAT Gateway**.
+* **Compute (`eks.tf`):** Managed Node Group using `t3.medium` instances with an **Auto-Scaling Group (ASG)** (1–4 nodes).
+* **Pipeline (`pipeline.tf`):** Full CI/CD stack including CodePipeline, S3 Artifact store, and IAM roles following the **Principle of Least Privilege**.
+* **Storage (`eks.tf`):** Private ECR Repository with a **Lifecycle Policy** to expire images older than 10 versions for cost optimization.
 
 ```
 terraform/
-├── main.tf      # Provider, backend, variables, outputs
-├── vpc.tf       # VPC, subnets, NAT gateway, routing
-└── eks.tf       # EKS cluster, node group, ECR, IAM roles
+├── main.tf      # State Backend (S3/DynamoDB), Providers, Outputs
+├── vpc.tf       # Networking & Routing Logic
+├── eks.tf       # EKS Cluster, Node Groups, & ECR
+├── pipeline.tf  # AWS CodePipeline & CodeBuild resources
+└── variables.tf # Input parameters for environment reusability
 ```
 
 ---
+## 🔐 Security & Engineering Standards
+1. **State Locking:** Uses a DynamoDB table to prevent concurrent Terraform runs and state corruption.
 
-## Kubernetes Setup
+2. **Pod Security:** Deployment uses securityContext to run as a non-root user (UID 1001).
 
-Two manifests in `k8s/`:
+3. **Health Strategy:** Implemented liveness and readiness probes to ensure high availability.
 
-**`deployment.yaml`**
-- 2 replicas with rolling update strategy (zero downtime)
-- CPU and memory resource limits defined
-- Liveness and readiness probes on `/health`
-- Non-root container user for security
+4. **Resource Management:** CPU/Memory limits defined to prevent "noisy neighbor" issues in the cluster.
 
-**`service.yaml`**
-- LoadBalancer service — provisions an AWS ALB automatically
-- HorizontalPodAutoscaler — scales pods when CPU exceeds 70%
+5. **AWS Native CI:** Build and deploy traffic stays within the AWS network, significantly reducing the surface area for credential leaks.
 
 ---
+## 🚀 Deployment Guide
+## Prerequisites
+- AWS CLI & Terraform installed.
 
-## Docker — Multi-Stage Build
+- An active **AWS CodeStar Connection** to your GitHub account (created via AWS Console).
 
-The `Dockerfile` uses three stages to keep the production image small and secure:
-
+ 1. **Provision Infrastructure**
 ```
-Stage 1: deps     Install production npm dependencies only
-Stage 2: builder  Copy all deps + source, run npm build
-Stage 3: runner   Copy only the build output — no dev tools, no source
-```
-
-Result: a minimal Alpine-based image running as a non-root user.
-
----
-
-## How to Run Locally
-
-**Prerequisites:** Node.js 20, Docker, AWS CLI, Terraform ≥ 1.7, kubectl
-
-```bash
-# Clone the repo
-git clone https://github.com/your-username/aws-devops-demo.git
-cd aws-devops-demo
-
-# Build and run with Docker
-docker build -t aws-devops-demo .
-docker run -p 3000:3000 aws-devops-demo
-# → http://localhost:3000
-```
-
----
-
-## How to Deploy to AWS
-
-```bash
-# 1. Provision infrastructure
 cd terraform
 terraform init
 terraform plan
 terraform apply
-
-# 2. Connect kubectl to the new cluster
-aws eks update-kubeconfig --region us-east-1 --name aws-devops-demo-cluster
-
-# 3. Deploy the app
-kubectl apply -f k8s/
-kubectl get pods    # verify pods are running
 ```
-
-After that, pushing to `main` triggers the GitHub Actions pipeline automatically.
-
+2. **Connect kubectl to the Cluster**
+```
+aws eks update-kubeconfig --region us-east-1 --name aws-devops-demo-cluster
+```
+3. **Deploy Kubernetes Manifests**
+```
+kubectl apply -f k8s/
+kubectl get pods
+```
 ---
+## 📈 Key Concepts Demonstrated
 
-## GitHub Secrets Required
-
-| Secret | What it is |
-|---|---|
-| `AWS_ACCESS_KEY_ID` | IAM user key |
-| `AWS_SECRET_ACCESS_KEY` | IAM user secret |
-| `ECR_REGISTRY` | e.g. `123456789.dkr.ecr.us-east-1.amazonaws.com` |
-
----
-
-## Key Concepts Demonstrated
-
-- **Infrastructure as Code** — all AWS resources defined in Terraform, no manual console clicks
-- **Immutable deployments** — every release is a new Docker image tagged with Git SHA
-- **Zero-downtime deploys** — Kubernetes rolling update with `maxUnavailable: 0`
+- **Infrastructure as Code** — 100% of AWS resources defined in Terraform.
+- **Immutable deployments** — Images tagged with Git SHA for perfect version tracking.
+- **AWS-Native CI/CD** — Leveraging CodePipeline for lower latency and tighter IAM integration.
 - **Least-privilege IAM** — separate roles for the EKS control plane and worker nodes
-- **Secure container** — non-root user, resource limits, health probes
-- **Automated pipeline** — no manual steps between a code push and a live deployment
+- **Kubernetes Hardening** —Non-root users, resource limits, and private node networking.
+
+---
