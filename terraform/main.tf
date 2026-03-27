@@ -1,3 +1,9 @@
+# ─────────────────────────────────────────────────────────────
+# TERRAFORM CONFIGURATION
+# Defines the required Terraform version, AWS provider,
+# and remote state backend.
+# ─────────────────────────────────────────────────────────────
+
 terraform {
   required_version = ">= 1.7.0"
 
@@ -8,19 +14,20 @@ terraform {
     }
   }
 
-  # Remote state in S3 — run scripts/bootstrap.sh first
+
   backend "s3" {
     bucket         = "aws-devops-demo-tfstate"
     key            = "terraform.tfstate"
     region         = "us-east-1"
     dynamodb_table = "terraform-state-lock"
-    encrypt        = true
+    encrypt        = true  
   }
 }
 
 provider "aws" {
   region = var.aws_region
 
+  # These tags are automatically applied to every resource Terraform creates
   default_tags {
     tags = {
       Project   = var.project_name
@@ -29,18 +36,19 @@ provider "aws" {
   }
 }
 
+# ── Outputs ───────────────────────────────────────────────────
 
 output "ecr_repository_url" {
-  description = "ECR URL to push Docker images to"
+  description = "ECR URL — set this as the ECR_REGISTRY GitHub secret"
   value       = aws_ecr_repository.app.repository_url
 }
 
 output "eks_cluster_name" {
-  description = "EKS cluster name — use with: aws eks update-kubeconfig --name <value>"
+  description = "Run: aws eks update-kubeconfig --name <value> to connect kubectl"
   value       = aws_eks_cluster.main.name
 }
 
 output "eks_cluster_endpoint" {
-  description = "Kubernetes API endpoint"
+  description = "Kubernetes API server endpoint"
   value       = aws_eks_cluster.main.endpoint
 }

@@ -31,9 +31,9 @@ ENV NODE_ENV=production \
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nodeuser
 
-# COPY --from=deps --chown=nodeuser:nodejs /app/node_modules ./node_modules
-# COPY --from=builder --chown=nodeuser:nodejs /app/build ./build
-# COPY --from=builder --chown=nodeuser:nodejs /app/package.json ./
+COPY --from=deps --chown=nodeuser:nodejs /app/node_modules ./node_modules
+COPY --from=builder --chown=nodeuser:nodejs /app/build ./build
+COPY --from=builder --chown=nodeuser:nodejs /app/package.json ./
 
 USER nodeuser
 EXPOSE 3000

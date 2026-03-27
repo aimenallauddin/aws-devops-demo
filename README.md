@@ -26,18 +26,13 @@ Push to main
      │
      ▼
 ┌─────────────┐
-│  1. TEST    │  npm lint + unit tests with coverage
-└──────┬──────┘
-       │ pass
-       ▼
-┌─────────────┐
-│  2. BUILD   │  Docker multi-stage build → push to AWS ECR
+│  1. BUILD   │  Docker multi-stage build → push to AWS ECR
 └──────┬──────┘     (tagged with Git short SHA for traceability)
        │
        ▼
 ┌─────────────┐
-│  3. DEPLOY  │  kubectl rolling update on EKS
-└─────────────┘     zero-downtime · auto-rollback on failure
+│  2. DEPLOY  │  (Commented this stage since i don't have EKS cluster) kubectl rolling update on EKS
+└─────────────┘     zero-downtime · auto-rollback on failure 
 ```
 
 Pull requests run the **test stage only** — nothing is deployed until code merges to `main`.

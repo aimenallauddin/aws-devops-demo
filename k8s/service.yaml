@@ -1,3 +1,5 @@
+# Service: exposes the deployment to network traffic.
+# Type LoadBalancer automatically provisions an AWS ALB.
 apiVersion: v1
 kind: Service
 metadata:
@@ -5,16 +7,20 @@ metadata:
   labels:
     app: aws-devops-demo
 spec:
-  type: LoadBalancer          # Provisions an AWS ALB automatically
+  # LoadBalancer tells AWS to create an Application Load Balancer
+  # and route external traffic to our pods
+  type: LoadBalancer
   selector:
-    app: aws-devops-demo
+    app: aws-devops-demo   
   ports:
     - name: http
-      port: 80
-      targetPort: 3000
+      port: 80             # Port the load balancer listens on
+      targetPort: 3000     # Port our Node.js app listens on inside the pod
       protocol: TCP
 
 ---
+# HorizontalPodAutoscaler: automatically adds or removes pods
+# based on CPU usage, so the app scales with real traffic.
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
@@ -24,12 +30,12 @@ spec:
     apiVersion: apps/v1
     kind: Deployment
     name: aws-devops-demo
-  minReplicas: 2
-  maxReplicas: 6
+  minReplicas: 2    # Never scale below 2 (for redundancy)
+  maxReplicas: 6    # Never scale above 6 (cost control)
   metrics:
     - type: Resource
       resource:
         name: cpu
         target:
           type: Utilization
-          averageUtilization: 70
+          averageUtilization: 70   # Scale up when average CPU exceeds 70%
