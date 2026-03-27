@@ -1,0 +1,21 @@
+{
+  "name": "aws-devops-demo",
+  "version": "1.0.0",
+  "description": "A end-to-end DevOps project demonstrating a production-style CI/CD pipeline for a Node.js application deployed to AWS EKS (Kubernetes), with infrastructure provisioned via Terraform.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/aimenallauddin/aws-devops-demo.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/aimenallauddin/aws-devops-demo/issues"
+  },
+  "homepage": "https://github.com/aimenallauddin/aws-devops-demo#readme"
+}
