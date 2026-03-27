@@ -4,7 +4,8 @@
   "description": "A end-to-end DevOps project demonstrating a production-style CI/CD pipeline for a Node.js application deployed to AWS EKS (Kubernetes), with infrastructure provisioned via Terraform.",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+  "build": "echo 'No build step needed for this demo'",
+  "start": "node server.js"
   },
   "repository": {
     "type": "git",
